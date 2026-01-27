@@ -1,0 +1,72 @@
+name: SOFA Update Monitor
+on:
+  schedule:
+    - cron: '0 */6 * * *' # Runs every 6 hours
+  workflow_dispatch:      # Allows manual testing
+
+jobs:
+  check-sofa:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # 1. Checkout the Code (from main)
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          path: main-code
+
+      # 2. Checkout the State File (from bot-state branch)
+      - name: Checkout State
+        uses: actions/checkout@v4
+        with:
+          ref: bot-state
+          path: bot-state
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: pip install requests
+
+      # 3. Run Monitor (Updated with Safe Copy Logic)
+      - name: Run Monitor
+        env:
+          CHAT_WEBHOOK_URL: ${{ secrets.CHAT_WEBHOOK_URL }}
+        run: |
+          # Copy the script to the root
+          cp main-code/sofa_monitor.py .
+          
+          # SAFETY CHECK: Only copy state file if it exists
+          if [ -f bot-state/last_check.json ]; then
+            cp bot-state/last_check.json .
+            echo "✅ Loaded existing state file."
+          else
+            echo "⚠️ No state file found. Script will create a new one."
+          fi
+          
+          # Run the script
+          python sofa_monitor.py
+          
+          # Move the new/updated file back to the state folder
+          cp last_check.json bot-state/
+
+      # 4. Commit Changes to the Unprotected Branch
+      - name: Commit State Changes
+        working-directory: bot-state
+        run: |
+          git config --global user.name 'SOFA Bot'
+          git config --global user.email 'bot@noreply.github.com'
+          
+          # Add the file (works for both new files and updates)
+          git add last_check.json
+          
+          # Only commit if there are changes
+          if [[ -n $(git status -s) ]]; then
+            git commit -m "Update last checked version"
+            git push origin bot-state
+          else
+            echo "No changes to commit."
+          fi
