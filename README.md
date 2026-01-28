@@ -25,6 +25,14 @@ It is designed to be **"Set and Forget"**—running entirely on GitHub Actions w
 
 ---
 
+## 📸 Preview
+
+| Critical Alert (0-Day) | Standard Update |
+| :---: | :---: |
+| ![Critical macOS Update](images/macos-update-critical.png) | ![Standard iOS Update](images/ios-update.png) |
+
+---
+
 ## 🚀 Easy Setup Guide
 
 ### 1. Fork & Clone
