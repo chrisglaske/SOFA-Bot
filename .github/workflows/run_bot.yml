@@ -1,7 +1,8 @@
 name: SOFA Update Monitor
 on:
-  schedule:
-    - cron: '0 */6 * * *' # Runs every 6 hours
+  # Uncomment the lines below to enable automatic scheduling
+  # schedule:
+  #   - cron: '0 */6 * * *' # Runs every 6 hours
   workflow_dispatch:      # Allows manual testing
 
 jobs:
