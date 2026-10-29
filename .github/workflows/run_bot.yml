@@ -36,6 +36,7 @@ jobs:
       - name: Run Monitor
         env:
           CHAT_WEBHOOK_URL: ${{ secrets.CHAT_WEBHOOK_URL }}
+          MONITORED_MAJORS: ${{ vars.MONITORED_MAJORS }} # Optional, e.g. '26,27'
         run: |
           # Copy the script to the root
           cp main-code/sofa_monitor.py .

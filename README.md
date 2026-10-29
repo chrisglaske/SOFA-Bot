@@ -18,18 +18,20 @@ It is designed to be **"Set and Forget"**—running entirely on GitHub Actions w
     * **High Risk:** Sets a 7-day deadline for updates with >10 CVEs.
     * **Standard:** Sets a 14-day deadline for routine patches.
 * **🧹 Noise Reduction:**
-    * Only monitors the **latest 2 major versions** of macOS and iOS (e.g., macOS 26 & 15).
+    * Monitors the **latest 2 major versions** of macOS and iOS by default, or exactly the versions you pin (e.g. `26,27`).
     * Ignores legacy updates to prevent channel spam.
-* **🎨 Rich Notifications:** Posts beautifully formatted Google Chat cards with color coding, dynamic device icons (iMac/iPhone), and deep links to official Apple security release notes.
+    * **One message per check:** all new releases are grouped into a single card instead of one message each.
+    * **One thread per release day:** if Apple staggers releases across checks, later ones reply in that day's thread.
+* **🎨 Rich Notifications:** Posts a Google Chat card with a section per OS, color coding (Pink for macOS, Blue for iOS), a "Patch by" date per release, a red banner with linked CVE IDs for actively exploited vulnerabilities, and deep links to official Apple security release notes.
 * **🧠 Stateless Logic:** Uses a separate orphan branch (`bot-state`) to store memory, ensuring the bot never needs admin permissions to push to your protected `main` branch.
 
 ---
 
 ## 📸 Preview
 
-| Critical Alert (0-Day) | Standard Update |
+| Release Day Digest | Critical Alert (0-Day) |
 | :---: | :---: |
-| ![Critical macOS Update](images/macos-update-critical.png) | ![Standard iOS Update](images/ios-update.png) |
+| ![Release day digest](images/digest.png) | ![Critical 0-day alert](images/digest-critical.png) |
 
 ---
 
@@ -52,6 +54,10 @@ To allow the bot to post to your chat without exposing the URL in code:
 4. Create a secret with these details:
     * **Name:** `CHAT_WEBHOOK_URL`
     * **Secret:** *[Paste the Google Chat Webhook URL you copied in Step 2]*
+
+**Optional: pin the OS versions to watch.** By default the bot watches the newest 2 major versions of macOS and iOS. To watch specific versions instead, open the **Variables** tab (next to Secrets) and add a repository variable:
+* **Name:** `MONITORED_MAJORS`
+* **Value:** a comma-separated list of major versions, e.g. `26,27`
 
 ### 4. Initialize the "Memory" Branch
 This bot uses a special orphan branch to store its state file (`last_check.json`). This prevents the bot from spamming your commit history on `main`.
@@ -81,7 +87,7 @@ git checkout main
 Go to the **Actions** tab in your GitHub repository.
 1. Select **SOFA Update Monitor** on the left.
 2. Click **Run workflow** to trigger the first check manually.
-3. *Note:* The first run will post alerts for all current versions to "initialize" its memory. Future runs will only post new updates.
+3. *Note:* The first run posts one card covering all current versions to "initialize" its memory. Future runs will only post new updates.
 
 ---
 
@@ -91,9 +97,10 @@ Go to the **Actions** tab in your GitHub repository.
 2.  **State Retrieval:** It checks out the code from `main` and the `last_check.json` file from the `bot-state` branch.
 3.  **Analysis:**
     * Fetches live JSON data from `sofa.macadmins.io`.
+    * Keeps only the major versions being watched (`MONITORED_MAJORS`, or the newest 2).
     * Compares the live "ProductVersion" against the version stored in `last_check.json`.
-4.  **Notification:** If a mismatch is found, it calculates the threat level (CVE counts + Active Exploits) and posts a card to Google Chat.
-5.  **State Save:** The script updates `last_check.json` and pushes it back to the `bot-state` branch automatically.
+4.  **Notification:** If any mismatches are found, it calculates the threat level for each release (CVE counts + Active Exploits) and posts **one** card covering all of them to Google Chat, threaded by release date.
+5.  **State Save:** If Chat accepted the post, the script updates `last_check.json` and pushes it back to the `bot-state` branch automatically. If the post failed, the next run retries it.
 
 ---
 
@@ -116,8 +123,8 @@ sofa-bot/
 * You likely missed **Step 4** (Initializing the Memory Branch). The workflow expects a `bot-state` branch to exist.
 
 **"I don't see any cards in Google Chat"**
-* Check the Action logs. If you see "Successfully posted", check your Webhook URL.
-* If you see `400 Bad Request`, ensure you haven't modified the JSON payload structure in `sofa_monitor.py` (Google Chat is strict about card widgets).
+* Check the Action logs. If you see "Chat digest sent", check your Webhook URL.
+* If you see `Chat Notification Failed: 400`, the log includes Google's response body. Ensure you haven't modified the JSON payload structure in `sofa_monitor.py` (Google Chat is strict about card widgets).
 
 **"It keeps posting the same update"**
 * This means the bot failed to push the updated `last_check.json` back to the repository. Check the "Commit State Changes" step in the Action logs for permission errors.
